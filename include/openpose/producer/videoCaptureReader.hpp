@@ -24,8 +24,9 @@ namespace op
         /**
          * This constructor of VideoCaptureReader wraps cv::VideoCapture(const std::string).
          * @param path const std::string indicating the cv::VideoCapture constructor string argument.
+         * @param producerType const std::string indicating whether the frame source is an IP camera or video.
          */
-        VideoCaptureReader(const std::string& path);
+        explicit VideoCaptureReader(const std::string& path, const ProducerType producerType);
 
         /**
          * Destructor of VideoCaptureReader. It releases the cv::VideoCapture member. It is virtual so that
@@ -33,7 +34,7 @@ namespace op
          */
         virtual ~VideoCaptureReader();
 
-        virtual std::string getFrameName() = 0;
+        virtual std::string getNextFrameName() = 0;
 
         inline bool isOpened() const
         {
@@ -46,18 +47,10 @@ namespace op
 
         virtual void set(const int capProperty, const double value) = 0;
 
-        inline double get(const ProducerProperty property)
-        {
-            return Producer::get(property);
-        }
-
-        inline void set(const ProducerProperty property, const double value)
-        {
-            Producer::set(property, value);
-        }
-
     protected:
         virtual cv::Mat getRawFrame() = 0;
+
+        virtual std::vector<cv::Mat> getRawFrames() = 0;
 
     private:
         cv::VideoCapture mVideoCapture;

@@ -12,24 +12,37 @@ namespace op
     class OP_API PoseExtractor
     {
     public:
-        PoseExtractor(const Point<int>& netOutputSize, const Point<int>& outputSize, const PoseModel poseModel, const std::vector<HeatMapType>& heatMapTypes = {},
-                      const ScaleMode heatMapScale = ScaleMode::ZeroToOne);
+        PoseExtractor(const PoseModel poseModel,
+                      const std::vector<HeatMapType>& heatMapTypes = {},
+                      const ScaleMode heatMapScale = ScaleMode::ZeroToOne,
+                      const bool addPartCandidates = false);
 
         virtual ~PoseExtractor();
 
         void initializationOnThread();
 
-        virtual void forwardPass(const Array<float>& inputNetData, const Point<int>& inputDataSize, const std::vector<float>& scaleRatios = {1.f}) = 0;
+        virtual void forwardPass(const std::vector<Array<float>>& inputNetData, const Point<int>& inputDataSize,
+                                 const std::vector<double>& scaleRatios = {1.f}) = 0;
+
+        virtual const float* getCandidatesCpuConstPtr() const = 0;
+
+        virtual const float* getCandidatesGpuConstPtr() const = 0;
 
         virtual const float* getHeatMapCpuConstPtr() const = 0;
 
         virtual const float* getHeatMapGpuConstPtr() const = 0;
 
-        Array<float> getHeatMaps() const;
+        virtual std::vector<int> getHeatMapSize() const = 0;
+
+        Array<float> getHeatMapsCopy() const;
+
+        std::vector<std::vector<std::array<float,3>>> getCandidatesCopy() const;
 
         virtual const float* getPoseGpuConstPtr() const = 0;
 
         Array<float> getPoseKeypoints() const;
+
+        Array<float> getPoseScores() const;
 
         float getScaleNetToOutput() const;
 
@@ -41,9 +54,9 @@ namespace op
 
     protected:
         const PoseModel mPoseModel;
-        const Point<int> mNetOutputSize;
-        const Point<int> mOutputSize;
+        Point<int> mNetOutputSize;
         Array<float> mPoseKeypoints;
+        Array<float> mPoseScores;
         float mScaleNetToOutput;
 
         void checkThread() const;
@@ -53,6 +66,7 @@ namespace op
     private:
         const std::vector<HeatMapType> mHeatMapTypes;
         const ScaleMode mHeatMapScaleMode;
+        const bool mAddPartCandidates;
         std::array<std::atomic<double>, (int)PoseProperty::Size> mProperties;
         std::thread::id mThreadId;
 

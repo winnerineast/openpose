@@ -4,7 +4,8 @@
 
 namespace op
 {
-    WebcamReader::WebcamReader(const int webcamIndex, const Point<int>& webcamResolution, const double fps, const bool throwExceptionIfNoOpened) :
+    WebcamReader::WebcamReader(const int webcamIndex, const Point<int>& webcamResolution, const double fps,
+                               const bool throwExceptionIfNoOpened) :
         VideoCaptureReader{webcamIndex, throwExceptionIfNoOpened},
         mFps{fps},
         mFrameNameCounter{-1},
@@ -14,15 +15,19 @@ namespace op
         {
             if (isOpened())
             {
+                mFrameNameCounter = 0;
                 if (webcamResolution != Point<int>{})
                 {
                     set(CV_CAP_PROP_FRAME_WIDTH, webcamResolution.x);
                     set(CV_CAP_PROP_FRAME_HEIGHT, webcamResolution.y);
-                    if ((int)get(CV_CAP_PROP_FRAME_WIDTH) != webcamResolution.x || (int)get(CV_CAP_PROP_FRAME_HEIGHT) != webcamResolution.y)
+                    if ((int)get(CV_CAP_PROP_FRAME_WIDTH) != webcamResolution.x
+                        || (int)get(CV_CAP_PROP_FRAME_HEIGHT) != webcamResolution.y)
                     {
-                        const std::string logMessage{ "Desired webcam resolution " + std::to_string(webcamResolution.x) + "x" + std::to_string(webcamResolution.y)
-                                                    + " could not being set. Final resolution: " + std::to_string(intRound(get(CV_CAP_PROP_FRAME_WIDTH))) + "x"
-                                                    + std::to_string(intRound(get(CV_CAP_PROP_FRAME_HEIGHT))) };
+                        const std::string logMessage{ "Desired webcam resolution " + std::to_string(webcamResolution.x)
+                                                      + "x" + std::to_string(webcamResolution.y)
+                                                      + " could not being set. Final resolution: "
+                                                      + std::to_string(intRound(get(CV_CAP_PROP_FRAME_WIDTH))) + "x"
+                                                      + std::to_string(intRound(get(CV_CAP_PROP_FRAME_HEIGHT))) };
                         log(logMessage, Priority::Max, __LINE__, __FUNCTION__, __FILE__);
                     }
                 }
@@ -54,11 +59,24 @@ namespace op
         }
     }
 
-    std::string WebcamReader::getFrameName()
+    std::vector<cv::Mat> WebcamReader::getCameraMatrices()
     {
         try
         {
-            return VideoCaptureReader::getFrameName();
+            return {};
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
+        }
+    }
+
+    std::string WebcamReader::getNextFrameName()
+    {
+        try
+        {
+            return VideoCaptureReader::getNextFrameName();
         }
         catch (const std::exception& e)
         {
@@ -133,7 +151,20 @@ namespace op
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return cv::Mat{};
+            return cv::Mat();
+        }
+    }
+
+    std::vector<cv::Mat> WebcamReader::getRawFrames()
+    {
+        try
+        {
+            return std::vector<cv::Mat>{getRawFrame()};
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
         }
     }
 

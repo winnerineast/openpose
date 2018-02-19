@@ -2,7 +2,8 @@
 
 namespace op
 {
-    void enterAndTab(std::ofstream& ofstream, const bool humanReadable, const long long bracesCounter, const long long bracketsCounter)
+    void enterAndTab(std::ofstream& ofstream, const bool humanReadable, const long long bracesCounter,
+                     const long long bracketsCounter)
     {
         try
         {
@@ -108,6 +109,19 @@ namespace op
             mBracketsCounter--;
             enterAndTab(mOfstream, mHumanReadable, mBracesCounter, mBracketsCounter);
             mOfstream << "]";
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    void JsonOfstream::version(const std::string& version)
+    {
+        try
+        {
+            key("version");
+            plainText(version);
         }
         catch (const std::exception& e)
         {

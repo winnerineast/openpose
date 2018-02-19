@@ -1,6 +1,16 @@
 #ifndef OPENPOSE_CORE_MACROS_HPP
 #define OPENPOSE_CORE_MACROS_HPP
 
+#include <memory> // std::shared_ptr
+#include <ostream>
+#include <string>
+#include <vector>
+
+// OpenPose name and version
+const std::string OPEN_POSE_NAME_STRING = "OpenPose";
+const std::string OPEN_POSE_VERSION_STRING = "1.2.1";
+const std::string OPEN_POSE_NAME_AND_VERSION = OPEN_POSE_NAME_STRING + " " + OPEN_POSE_VERSION_STRING;
+
 #ifndef _WIN32
     #define OP_API
 #elif defined OP_EXPORTS
@@ -15,21 +25,15 @@
     #pragma warning( disable: 4275 ) // non dll-interface structXXX used as base
 #endif
 
-#define DATUM_BASE_NO_PTR std::vector<Datum>
-#define DATUM_BASE std::shared_ptr<DATUM_BASE_NO_PTR>
-#define DEFINE_TEMPLATE_DATUM(templateName) template class OP_API templateName<DATUM_BASE>
-#define COMPILE_TEMPLATE_DATUM(templateName) extern DEFINE_TEMPLATE_DATUM(templateName)
-
 #define UNUSED(unusedVariable) (void)(unusedVariable)
 
 #define DELETE_COPY(className) \
     className(const className&) = delete; \
     className& operator=(const className&) = delete
 
+// Instantiate a class with all the basic types
 #define COMPILE_TEMPLATE_BASIC_TYPES_CLASS(className) COMPILE_TEMPLATE_BASIC_TYPES(className, class)
-
 #define COMPILE_TEMPLATE_BASIC_TYPES_STRUCT(className) COMPILE_TEMPLATE_BASIC_TYPES(className, struct)
-
 #define COMPILE_TEMPLATE_BASIC_TYPES(className, classType) \
     template classType OP_API className<char>; \
     template classType OP_API className<signed char>; \
@@ -46,12 +50,35 @@
     template classType OP_API className<double>; \
     template classType OP_API className<long double>
 
-// Includes at the end, since this macros class does not need them, but the files that call this
-// file. However, keeping the files at the beginning might create a circular include linking problem.
-#include <memory> // std::shared_ptr
-#include <vector>
-#include <openpose/core/datum.hpp>
-#include <openpose/core/point.hpp>
-#include <openpose/core/rectangle.hpp>
+/**
+ * cout operator overload calling toString() function
+ * @return std::ostream containing output from toString()
+ */
+#define OVERLOAD_C_OUT(className) \
+    template<typename T> std::ostream &operator<<(std::ostream& ostream, const op::className<T>& obj) \
+    { \
+        ostream << obj.toString(); \
+        return ostream; \
+    }
+
+// Instantiate a class with float and double specifications
+#define COMPILE_TEMPLATE_FLOATING_TYPES_CLASS(className) COMPILE_TEMPLATE_FLOATING_TYPES(className, class)
+#define COMPILE_TEMPLATE_FLOATING_TYPES_STRUCT(className) COMPILE_TEMPLATE_FLOATING_TYPES(className, struct)
+#define COMPILE_TEMPLATE_FLOATING_TYPES(className, classType) \
+  char gInstantiationGuard##className; \
+  template classType OP_API className<float>; \
+  template classType OP_API className<double>
+
+// PIMPL does not work if function arguments need the 3rd-party class. Alternative:
+// stackoverflow.com/questions/13978775/how-to-avoid-include-dependency-to-external-library?answertab=active#tab-top
+struct dim3;
+namespace caffe
+{
+    template <typename T> class Blob;
+}
+namespace boost
+{
+    template <typename T> class shared_ptr; // E.g., boost::shared_ptr<caffe::Blob<float>>
+}
 
 #endif // OPENPOSE_CORE_MACROS_HPP

@@ -94,7 +94,7 @@ namespace op
                 // Find closest previous rectangle
                 auto maxIndex = -1;
                 auto maxValue = 0.f;
-                for (auto previous = 0 ; previous < previousHands.size() ; previous++)
+                for (auto previous = 0u ; previous < previousHands.size() ; previous++)
                 {
                     const auto areaRatio = getAreaRatio(currentRectangle, previousHands[previous]);
                     if (maxValue < areaRatio)
@@ -130,7 +130,7 @@ namespace op
     {
     }
 
-    std::vector<std::array<Rectangle<float>, 2>> HandDetector::detectHands(const Array<float>& poseKeypoints, const float scaleInputToOutput) const
+    std::vector<std::array<Rectangle<float>, 2>> HandDetector::detectHands(const Array<float>& poseKeypoints, const double scaleInputToOutput) const
     {
         try
         {
@@ -148,8 +148,8 @@ namespace op
                         mPoseIndexes[(int)PosePart::LShoulder], mPoseIndexes[(int)PosePart::RWrist],
                         mPoseIndexes[(int)PosePart::RElbow], mPoseIndexes[(int)PosePart::RShoulder], threshold
                     );
-                    handRectangles.at(person).at(0) /= scaleInputToOutput;
-                    handRectangles.at(person).at(1) /= scaleInputToOutput;
+                    handRectangles.at(person).at(0) /= (float) scaleInputToOutput;
+                    handRectangles.at(person).at(1) /= (float) scaleInputToOutput;
                 }
             }
             return handRectangles;
@@ -161,7 +161,7 @@ namespace op
         }
     }
 
-    std::vector<std::array<Rectangle<float>, 2>> HandDetector::trackHands(const Array<float>& poseKeypoints, const float scaleInputToOutput)
+    std::vector<std::array<Rectangle<float>, 2>> HandDetector::trackHands(const Array<float>& poseKeypoints, const double scaleInputToOutput)
     {
         try
         {
@@ -169,11 +169,8 @@ namespace op
             // Baseline detectHands
             auto handRectangles = detectHands(poseKeypoints, scaleInputToOutput);
             // If previous hands saved
-            // for (auto current = 0 ; current < handRectangles.size() ; current++)
             for (auto& handRectangle : handRectangles)
             {
-                // trackHand(handRectangles[current][0], mHandLeftPrevious);
-                // trackHand(handRectangles[current][1], mHandRightPrevious);
                 trackHand(handRectangle[0], mHandLeftPrevious);
                 trackHand(handRectangle[1], mHandRightPrevious);
             }
@@ -197,26 +194,25 @@ namespace op
                 mCurrentId = id;
                 // Parameters
                 const auto numberPeople = handKeypoints.at(0).getSize(0);
-                const auto handNumberParts = handKeypoints[0].getSize(1);
                 const auto thresholdRectangle = 0.25f;
                 // Update pose keypoints and hand rectangles
                 mPoseTrack.resize(numberPeople);
                 mHandLeftPrevious.clear();
                 mHandRightPrevious.clear();
-                for (auto person = 0 ; person < mPoseTrack.size() ; person++)
+                for (auto person = 0u ; person < mPoseTrack.size() ; person++)
                 {
                     const auto scoreThreshold = 0.66667f;
                     // Left hand
                     if (getAverageScore(handKeypoints[0], person) > scoreThreshold)
                     {
-                        const auto handLeftRectangle = getKeypointsRectangle(handKeypoints[0], person, handNumberParts, thresholdRectangle);
+                        const auto handLeftRectangle = getKeypointsRectangle(handKeypoints[0], person, thresholdRectangle);
                         if (handLeftRectangle.area() > 0)
                             mHandLeftPrevious.emplace_back(handLeftRectangle);
                     }
                     // Right hand
                     if (getAverageScore(handKeypoints[1], person) > scoreThreshold)
                     {
-                        const auto handRightRectangle = getKeypointsRectangle(handKeypoints[1], person, handNumberParts, thresholdRectangle);
+                        const auto handRightRectangle = getKeypointsRectangle(handKeypoints[1], person, thresholdRectangle);
                         if (handRightRectangle.area() > 0)
                             mHandRightPrevious.emplace_back(handRightRectangle);
                     }
@@ -234,7 +230,7 @@ namespace op
     ) const
     {
         std::array<unsigned int, (int)PosePart::Size> poseKeypoints;
-        for (auto i = 0 ; i < poseKeypoints.size() ; i++)
+        for (auto i = 0u ; i < poseKeypoints.size() ; i++)
             poseKeypoints.at(i) = poseBodyPartMapStringToKey(poseModel, poseStrings.at(i));
         return poseKeypoints;
     }

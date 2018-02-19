@@ -8,7 +8,8 @@ namespace op
     {
     }
 
-    void KeypointScaler::scale(Array<float>& arrayToScale, const float scaleInputToOutput, const float scaleNetToOutput, const Point<int>& producerSize) const
+    void KeypointScaler::scale(Array<float>& arrayToScale, const double scaleInputToOutput,
+                               const double scaleNetToOutput, const Point<int>& producerSize) const
     {
         try
         {
@@ -21,35 +22,38 @@ namespace op
         }
     }
 
-    void KeypointScaler::scale(std::vector<Array<float>>& arrayToScalesToScale, const float scaleInputToOutput, const float scaleNetToOutput, const Point<int>& producerSize) const
+    void KeypointScaler::scale(std::vector<Array<float>>& arrayToScalesToScale, const double scaleInputToOutput,
+                               const double scaleNetToOutput, const Point<int>& producerSize) const
     {
         try
         {
-            if (mScaleMode != ScaleMode::OutputResolution)
+            if (mScaleMode != ScaleMode::InputResolution)
             {
-                // InputResolution
-                if (mScaleMode == ScaleMode::InputResolution)
+                // OutputResolution
+                if (mScaleMode == ScaleMode::OutputResolution)
+                {
                     for (auto& arrayToScale : arrayToScalesToScale)
-                        scaleKeypoints(arrayToScale, 1.f/scaleInputToOutput);
+                        scaleKeypoints(arrayToScale, float(scaleInputToOutput));
+                }
                 // NetOutputResolution
                 else if (mScaleMode == ScaleMode::NetOutputResolution)
+                {
                     for (auto& arrayToScale : arrayToScalesToScale)
-                        scaleKeypoints(arrayToScale, 1.f/scaleNetToOutput);
+                        scaleKeypoints(arrayToScale, float(1./scaleNetToOutput));
+                }
                 // [0,1]
                 else if (mScaleMode == ScaleMode::ZeroToOne)
                 {
-                    const auto scale = 1.f/scaleInputToOutput;
-                    const auto scaleX = scale / ((float)producerSize.x - 1.f);
-                    const auto scaleY = scale / ((float)producerSize.y - 1.f);
+                    const auto scaleX = 1.f / ((float)producerSize.x - 1.f);
+                    const auto scaleY = 1.f / ((float)producerSize.y - 1.f);
                     for (auto& arrayToScale : arrayToScalesToScale)
                         scaleKeypoints(arrayToScale, scaleX, scaleY);
                 }
                 // [-1,1]
                 else if (mScaleMode == ScaleMode::PlusMinusOne)
                 {
-                    const auto scale = 2.f/scaleInputToOutput;
-                    const auto scaleX = (scale / ((float)producerSize.x - 1.f));
-                    const auto scaleY = (scale / ((float)producerSize.y - 1.f));
+                    const auto scaleX = (2.f / ((float)producerSize.x - 1.f));
+                    const auto scaleY = (2.f / ((float)producerSize.y - 1.f));
                     const auto offset = -1.f;
                     for (auto& arrayToScale : arrayToScalesToScale)
                         scaleKeypoints(arrayToScale, scaleX, scaleY, offset, offset);

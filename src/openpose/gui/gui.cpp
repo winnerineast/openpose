@@ -7,8 +7,6 @@
 
 namespace op
 {
-    const std::string OPEN_POSE_TEXT{"OpenPose 1.0.1"};
-
     inline void showGuiHelp()
     {
         try
@@ -18,7 +16,8 @@ namespace op
             if (!helpCvMat.empty())
             {
                 const auto fullScreen = false;
-                FrameDisplayer frameDisplayer{Point<int>{helpCvMat.cols, helpCvMat.rows}, OPEN_POSE_TEXT + " - GUI Help", fullScreen};
+                FrameDisplayer frameDisplayer{OPEN_POSE_NAME_AND_VERSION + " - GUI Help",
+                                              Point<int>{helpCvMat.cols, helpCvMat.rows}, fullScreen};
                 frameDisplayer.displayFrame(helpCvMat, 33);
             }
         }
@@ -28,8 +27,10 @@ namespace op
         }
     }
 
-    void handleWaitKey(bool& guiPaused, FrameDisplayer& mFrameDisplayer, std::vector<std::shared_ptr<PoseExtractor>>& mPoseExtractors,
-                       std::vector<std::shared_ptr<PoseRenderer>>& mPoseRenderers, std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
+    void handleWaitKey(bool& guiPaused, FrameDisplayer& frameDisplayer,
+                       std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors,
+                       std::vector<std::shared_ptr<Renderer>>& renderers,
+                       std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
                        std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& spVideoSeek)
     {
         try
@@ -54,7 +55,7 @@ namespace op
                     showGuiHelp();
                 // Switch full screen - normal screen
                 else if (castedKey=='f')
-                    mFrameDisplayer.switchGuiDisplayMode();
+                    frameDisplayer.switchFullScreenMode();
                 // ------------------------- Producer-Related ------------------------- //
                 // Pause
                 else if (castedKey==' ')
@@ -81,45 +82,48 @@ namespace op
                 // Enable/disable blending
                 else if (castedKey=='b')
                 {
-                    for (auto& poseRenderer : mPoseRenderers)
-                        poseRenderer->setBlendOriginalFrame(!poseRenderer->getBlendOriginalFrame());
+                    for (auto& renderer : renderers)
+                        renderer->setBlendOriginalFrame(!renderer->getBlendOriginalFrame());
                 }
                 // ------------------------- OpenPose-Related ------------------------- //
                 // Modifying thresholds
                 else if (castedKey=='-' || castedKey=='=')
-                    for (auto& poseExtractor : mPoseExtractors)
+                    for (auto& poseExtractor : poseExtractors)
                         poseExtractor->increase(PoseProperty::NMSThreshold, 0.005f * (castedKey=='-' ? -1 : 1));
                 else if (castedKey=='_' || castedKey=='+')
-                    for (auto& poseExtractor : mPoseExtractors)
-                        poseExtractor->increase(PoseProperty::ConnectMinSubsetScore, 0.005f * (castedKey=='_' ? -1 : 1));
+                    for (auto& poseExtractor : poseExtractors)
+                        poseExtractor->increase(PoseProperty::ConnectMinSubsetScore,
+                                                0.005f * (castedKey=='_' ? -1 : 1));
                 else if (castedKey=='[' || castedKey==']')
-                    for (auto& poseExtractor : mPoseExtractors)
-                        poseExtractor->increase(PoseProperty::ConnectInterThreshold, 0.005f * (castedKey=='[' ? -1 : 1));
+                    for (auto& poseExtractor : poseExtractors)
+                        poseExtractor->increase(PoseProperty::ConnectInterThreshold,
+                                                0.005f * (castedKey=='[' ? -1 : 1));
                 else if (castedKey=='{' || castedKey=='}')
-                    for (auto& poseExtractor : mPoseExtractors)
-                        poseExtractor->increase(PoseProperty::ConnectInterMinAboveThreshold, (castedKey=='{' ? -1 : 1));
+                    for (auto& poseExtractor : poseExtractors)
+                        poseExtractor->increase(PoseProperty::ConnectInterMinAboveThreshold,
+                                                (castedKey=='{' ? -0.1f : 0.1f));
                 else if (castedKey==';' || castedKey=='\'')
-                    for (auto& poseExtractor : mPoseExtractors)
+                    for (auto& poseExtractor : poseExtractors)
                         poseExtractor->increase(PoseProperty::ConnectMinSubsetCnt, (castedKey==';' ? -1 : 1));
                 // ------------------------- Miscellaneous ------------------------- //
                 // Show googly eyes
                 else if (castedKey=='g')
-                    for (auto& poseRenderer : mPoseRenderers)
-                        poseRenderer->setShowGooglyEyes(!poseRenderer->getShowGooglyEyes());
+                    for (auto& renderer : renderers)
+                        renderer->setShowGooglyEyes(!renderer->getShowGooglyEyes());
                 // ------------------------- OpenPose-Related ------------------------- //
                 else if (castedKey==',' || castedKey=='.')
                 {
                     const auto increment = (castedKey=='.' ? 1 : -1);
-                    for (auto& poseRenderer : mPoseRenderers)
-                        poseRenderer->increaseElementToRender(increment);
+                    for (auto& renderer : renderers)
+                        renderer->increaseElementToRender(increment);
                 }
                 else
                 {
                     const std::string key2part = "0123456789qwertyuiopasd";
                     const auto newElementToRender = key2part.find(castedKey);
                     if (newElementToRender != std::string::npos)
-                        for (auto& poseRenderer : mPoseRenderers)
-                            poseRenderer->setElementToRender((int)newElementToRender);
+                        for (auto& renderer : renderers)
+                            renderer->setElementToRender((int)newElementToRender);
                 }
             }
         }
@@ -129,19 +133,20 @@ namespace op
         }
     }
 
-    void handleUserInput(FrameDisplayer& mFrameDisplayer, std::vector<std::shared_ptr<PoseExtractor>>& mPoseExtractors,
-                         std::vector<std::shared_ptr<PoseRenderer>>& mPoseRenderers, std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
+    void handleUserInput(FrameDisplayer& frameDisplayer, std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors,
+                         std::vector<std::shared_ptr<Renderer>>& renderers,
+                         std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
                          std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& spVideoSeek)
     {
         try
         {
             // The handleUserInput must be always performed, even if no tDatum is detected
             bool guiPaused = false;
-            handleWaitKey(guiPaused, mFrameDisplayer, mPoseExtractors, mPoseRenderers, isRunningSharedPtr, spVideoSeek);
+            handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, spVideoSeek);
             while (guiPaused)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds{1});
-                handleWaitKey(guiPaused, mFrameDisplayer, mPoseExtractors, mPoseRenderers, isRunningSharedPtr, spVideoSeek);
+                handleWaitKey(guiPaused, frameDisplayer, poseExtractors, renderers, isRunningSharedPtr, spVideoSeek);
             }
         }
         catch (const std::exception& e)
@@ -150,13 +155,15 @@ namespace op
         }
     }
 
-    Gui::Gui(const bool fullScreen, const Point<int>& outputSize, const std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr, 
+    Gui::Gui(const Point<int>& outputSize, const bool fullScreen,
+             const std::shared_ptr<std::atomic<bool>>& isRunningSharedPtr,
              const std::shared_ptr<std::pair<std::atomic<bool>, std::atomic<int>>>& videoSeekSharedPtr,
-             const std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors, const std::vector<std::shared_ptr<PoseRenderer>>& poseRenderers) :
-        mFrameDisplayer{outputSize, OPEN_POSE_TEXT, fullScreen},
-        mPoseExtractors{poseExtractors},
-        mPoseRenderers{poseRenderers},
+             const std::vector<std::shared_ptr<PoseExtractor>>& poseExtractors,
+             const std::vector<std::shared_ptr<Renderer>>& renderers) :
         spIsRunning{isRunningSharedPtr},
+        mFrameDisplayer{OPEN_POSE_NAME_AND_VERSION, outputSize, fullScreen},
+        mPoseExtractors{poseExtractors},
+        mRenderers{renderers},
         spVideoSeek{videoSeekSharedPtr}
     {
     }
@@ -166,19 +173,70 @@ namespace op
         mFrameDisplayer.initializationOnThread();
     }
 
-    void Gui::update(const cv::Mat& cvOutputData)
+    void Gui::setImage(const cv::Mat& cvMatOutput)
     {
         try
         {
             // Check tDatum integrity
-            const bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvOutputData.empty());
+            const bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvMatOutput.empty());
 
             // Display
             if (returnedIsValidFrame)
-                mFrameDisplayer.displayFrame(cvOutputData, -1);
+                mFrameDisplayer.displayFrame(cvMatOutput, -1);
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
 
+    void Gui::setImage(const std::vector<cv::Mat>& cvMatOutputs)
+    {
+        try
+        {
+            // 0 image
+            if (cvMatOutputs.empty())
+                setImage(cvMatOutputs[0]);
+            // 1 image
+            else if (cvMatOutputs.size() == 1)
+                setImage(cvMatOutputs[0]);
+            // > 1 image
+            else
+            {
+                // Check tDatum integrity
+                bool returnedIsValidFrame = ((spIsRunning == nullptr || *spIsRunning) && !cvMatOutputs.empty());
+                if (returnedIsValidFrame)
+                {
+                    // Security checks
+                    for (const auto& cvMatOutput : cvMatOutputs)
+                        if (cvMatOutput.empty())
+                            returnedIsValidFrame = false;
+                    // Prepare final cvMat
+                    if (returnedIsValidFrame)
+                    {
+                        // Concat (0)
+                        cv::Mat cvMat = cvMatOutputs[0].clone();
+                        // Concat (1,size()-1)
+                        for (auto i = 1u; i < cvMatOutputs.size(); i++)
+                            cv::hconcat(cvMat, cvMatOutputs[i], cvMat);
+                        // Display
+                        mFrameDisplayer.displayFrame(cvMat, -1);
+                    }
+                }
+            }
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+        }
+    }
+
+    void Gui::update()
+    {
+        try
+        {
             // Handle user input
-            handleUserInput(mFrameDisplayer, mPoseExtractors, mPoseRenderers, spIsRunning, spVideoSeek);
+            handleUserInput(mFrameDisplayer, mPoseExtractors, mRenderers, spIsRunning, spVideoSeek);
         }
         catch (const std::exception& e)
         {

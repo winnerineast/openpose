@@ -10,8 +10,11 @@ namespace op
         try
         {
             // Get files on directory with the desired extensions
-            const std::vector<std::string> extensions{"bmp", "dib", "pbm", "pgm", "ppm", "sr", "ras",   // Completely supported by OpenCV
-                                                      "jpg", "jpeg", "png"};                            // Most of them supported by OpenCV
+            const std::vector<std::string> extensions{
+                // Completely supported by OpenCV
+                "bmp", "dib", "pbm", "pgm", "ppm", "sr", "ras",
+                // Most of them supported by OpenCV
+                "jpg", "jpeg", "png"};
             const auto imagePaths = getFilesOnDirectory(imageDirectoryPath, extensions);
 
             // Check #files > 0
@@ -35,9 +38,30 @@ namespace op
     {
     }
 
-    std::string ImageDirectoryReader::getFrameName()
+    std::vector<cv::Mat> ImageDirectoryReader::getCameraMatrices()
     {
-        return getFileNameNoExtension(mFilePaths.at(mFrameNameCounter));
+        try
+        {
+            return {};
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
+        }
+    }
+
+    std::string ImageDirectoryReader::getNextFrameName()
+    {
+        try
+        {
+            return getFileNameNoExtension(mFilePaths.at(mFrameNameCounter));
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return "";
+        }
     }
 
     cv::Mat ImageDirectoryReader::getRawFrame()
@@ -45,7 +69,8 @@ namespace op
         try
         {
             auto frame = loadImage(mFilePaths.at(mFrameNameCounter++).c_str(), CV_LOAD_IMAGE_COLOR);
-            // Check frame integrity. This function also checks width/height changes. However, if it is performed after setWidth/setHeight this is performed over the new resolution (so they always match).
+            // Check frame integrity. This function also checks width/height changes. However, if it is performed
+            // after setWidth/setHeight this is performed over the new resolution (so they always match).
             checkFrameIntegrity(frame);
             // Update size, since images might have different size between each one of them
             mResolution = Point<int>{frame.cols, frame.rows};
@@ -54,7 +79,20 @@ namespace op
         catch (const std::exception& e)
         {
             error(e.what(), __LINE__, __FUNCTION__, __FILE__);
-            return cv::Mat{};
+            return cv::Mat();
+        }
+    }
+
+    std::vector<cv::Mat> ImageDirectoryReader::getRawFrames()
+    {
+        try
+        {
+            return std::vector<cv::Mat>{getRawFrame()};
+        }
+        catch (const std::exception& e)
+        {
+            error(e.what(), __LINE__, __FUNCTION__, __FILE__);
+            return {};
         }
     }
 
@@ -64,14 +102,16 @@ namespace op
         {
             if (capProperty == CV_CAP_PROP_FRAME_WIDTH)
             {
-                if (get(ProducerProperty::Rotation) == 0. || get(ProducerProperty::Rotation) == 180.)
+                if (Producer::get(ProducerProperty::Rotation) == 0.
+                    || Producer::get(ProducerProperty::Rotation) == 180.)
                     return mResolution.x;
                 else
                     return mResolution.y;
             }
             else if (capProperty == CV_CAP_PROP_FRAME_HEIGHT)
             {
-                if (get(ProducerProperty::Rotation) == 0. || get(ProducerProperty::Rotation) == 180.)
+                if (Producer::get(ProducerProperty::Rotation) == 0.
+                    || Producer::get(ProducerProperty::Rotation) == 180.)
                     return mResolution.y;
                 else
                     return mResolution.x;
@@ -104,7 +144,7 @@ namespace op
             else if (capProperty == CV_CAP_PROP_FRAME_HEIGHT)
                 mResolution.y = {(int)value};
             else if (capProperty == CV_CAP_PROP_POS_FRAMES)
-                mFrameNameCounter = fastTruncate((long long)value, 0ll, (long long)mImageDirectoryPath.size()-1);
+                mFrameNameCounter = fastTruncate((long long)value, 0ll, (long long)mFilePaths.size()-1);
             else if (capProperty == CV_CAP_PROP_FRAME_COUNT || capProperty == CV_CAP_PROP_FPS)
                 log("This property is read-only.", Priority::Max, __LINE__, __FUNCTION__, __FILE__);
             else
