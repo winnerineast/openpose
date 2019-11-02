@@ -18,10 +18,16 @@ namespace op
          * Constructor of ImageDirectoryReader. It sets the image directory path from which the images will be loaded
          * and generates a std::vector<std::string> with the list of images on that directory.
          * @param imageDirectoryPath const std::string parameter with the folder path containing the images.
+         * @param cameraParameterPath const std::string parameter with the folder path containing the camera
+         * parameters (only required if imageDirectorystereo > 1).
+         * @param numberViews const int parameter with the number of images per iteration (>1 would represent
+         * stereo processing).
          */
-        explicit ImageDirectoryReader(const std::string& imageDirectoryPath);
+        explicit ImageDirectoryReader(
+            const std::string& imageDirectoryPath, const std::string& cameraParameterPath = "",
+            const bool undistortImage = false, const int numberViews = -1);
 
-        std::vector<cv::Mat> getCameraMatrices();
+        virtual ~ImageDirectoryReader();
 
         std::string getNextFrameName();
 
@@ -45,9 +51,9 @@ namespace op
         Point<int> mResolution;
         long long mFrameNameCounter;
 
-        cv::Mat getRawFrame();
+        Matrix getRawFrame();
 
-        std::vector<cv::Mat> getRawFrames();
+        std::vector<Matrix> getRawFrames();
 
         DELETE_COPY(ImageDirectoryReader);
     };

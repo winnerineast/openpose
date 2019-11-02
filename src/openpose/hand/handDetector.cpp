@@ -1,9 +1,9 @@
+#include <openpose/hand/handDetector.hpp>
 #include <openpose/pose/poseParameters.hpp>
 #include <openpose/utilities/check.hpp>
 #include <openpose/utilities/fastMath.hpp>
 #include <openpose/utilities/keypoint.hpp>
-#include <openpose/hand/handDetector.hpp>
- 
+
 namespace op
 {
     inline Rectangle<float> getHandFromPoseIndexes(const Array<float>& poseKeypoints, const unsigned int person, const unsigned int wrist,
@@ -130,7 +130,11 @@ namespace op
     {
     }
 
-    std::vector<std::array<Rectangle<float>, 2>> HandDetector::detectHands(const Array<float>& poseKeypoints, const double scaleInputToOutput) const
+    HandDetector::~HandDetector()
+    {
+    }
+
+    std::vector<std::array<Rectangle<float>, 2>> HandDetector::detectHands(const Array<float>& poseKeypoints) const
     {
         try
         {
@@ -148,8 +152,6 @@ namespace op
                         mPoseIndexes[(int)PosePart::LShoulder], mPoseIndexes[(int)PosePart::RWrist],
                         mPoseIndexes[(int)PosePart::RElbow], mPoseIndexes[(int)PosePart::RShoulder], threshold
                     );
-                    handRectangles.at(person).at(0) /= (float) scaleInputToOutput;
-                    handRectangles.at(person).at(1) /= (float) scaleInputToOutput;
                 }
             }
             return handRectangles;
@@ -161,13 +163,13 @@ namespace op
         }
     }
 
-    std::vector<std::array<Rectangle<float>, 2>> HandDetector::trackHands(const Array<float>& poseKeypoints, const double scaleInputToOutput)
+    std::vector<std::array<Rectangle<float>, 2>> HandDetector::trackHands(const Array<float>& poseKeypoints)
     {
         try
         {
             std::lock_guard<std::mutex> lock{mMutex};
             // Baseline detectHands
-            auto handRectangles = detectHands(poseKeypoints, scaleInputToOutput);
+            auto handRectangles = detectHands(poseKeypoints);
             // If previous hands saved
             for (auto& handRectangle : handRectangles)
             {
